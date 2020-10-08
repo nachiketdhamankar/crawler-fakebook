@@ -1,0 +1,43 @@
+Hello!
+This is a web-crawler for `fakebook`. In a nutshell, it crawls thousands of webpages in search of 'secret keys'. The crawler handles the login, sessions, and cookies. It avoids loops and uses sockets for the entire communication. It communicates with fakebook using the REST APIs. You can find the problem statement in the file 'problemStatement.pdf' in the root of the repository.
+
+Web Crawler Application: Application consists of three main classes which are explained below. 
+
+Usage:
+./webcrawler [username] [password]
+
+The PacketTransfer class has the following objectives:
+Connect to the server.
+Create a suitable request package (using the correct protocol - GET or POST).
+Send the packet to the server.
+Receive the response.
+Encapsulate the required information associated with each status code (For example, isolate the new location with status code 301).
+Close the connection to the server.
+	
+The initial approach was to break down each request and learn their format. To learn about each request packet structure, we used the developer tools in Chrome and Wireshark. 
+Once the exact structure of the packet was known, we traced each request made by the browser and the response sent by the server. This gave insight into the sequence of the packet transfer between the browser and the server. Also, the cookies - CSRF and the Session ID that changed with every response from the server and the server expected the previously sent cookies with the new request from the client.
+We used a socket to transfer data to and from the server. Once a GET request (initial header) is sent, we read the data and extract the cookies using regex. These cookies are attached with the next POST request along with the other header information. This returns a '302 Found' status code from the server. Then we made a GET request to the redirected server and got the home page.
+Once logged in, all the requests to the server were simple GET requests and then the response would be parsed to check for the secret flags and the links on the page would be added to the queue to be crawled.
+
+The parser reads the complete HTML tag by tag and extracts the relevant information from it. From this HTML we need to extract all the URLs on the page and the secret keys on it.
+We feed the fake-book parser with the webpage that we want to read and extract information from the anchor tags and an h2 tag having class as secret_key.
+Once we extract data it will be available in “data” (an instance variable of this class). This is a dictionary having the profile links, friends list pages links and the secret key.
+
+Webcrawler.py Class performs the following tasks:
+It acts as the entry point of our application. 
+Starts crawling the FakeBook webpages by first logging into FakeBook account using the given Username and Password. It uses an object of PacketTransfer class to connects to the server and log into the FakeBook account. 
+Once the welcome page links are collected using the parse_webpage.py class, it adds them into a list and starts crawling the links one at a time. 
+While crawling it looks for a secret flag in each of the links and collects other links present on those pages as well. 
+It maintains a visited list so that the crawler does not visit a page twice.
+It also checks for the validity of the URL(s) received from parse_webpage.py. Only crawls the links that point to pages on cs5700.ccs.neu.edu.
+
+Challenges:
+
+One of the main challenges we faced was initially with the '302 Found' status code as I didn't know another request had to be made to the redirected location. 
+Also, in one of my requests, we had forgotten to add '\r\n\r\n' at the end but was adding '\r\n' instead and this resulted in a request timed out. 
+Initially, when we were receiving the 500 error code from the server, we are trying to send a request to the same URL again. This resulted in the server sending empty data indefinitely. 
+We corrected this by first logging in again after we get a 500 error and then sending the request to the URL which resulted in the error. 
+
+Testing
+To test the code, we used a logger to log every step of the request and response. Once the initial header was sent, each response sent by the header was logged and ensured that no unexpected behavior occurred.
+The code was run on the server itself to ensure that the libraries used were present on the CCIS system.
